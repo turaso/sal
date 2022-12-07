@@ -6,6 +6,8 @@
 #include <functional>
 #include <utility>
 
+#include <sal/node_tree_binary_base.hh>
+
 namespace sal {
 
 template <typename Data>
@@ -22,69 +24,57 @@ public:
     constexpr operator Value() const;
     Value value = LEFT;
   };
-  class Node {
+  template <NodeValue T>
+  class Node : public NodeTreeBinaryBase<Node, T> {
   public:
     enum class Color : bool {
       BLACK,
       RED,
     };
-    static constexpr std::size_t CHILDS_NUM = 2;
-    template <typename T>
-    using container_type = T[CHILDS_NUM];
-    using childs_type = container_type<Node*>;
     using parent_type = Node*;
     constexpr Node() = default;
     constexpr Node(value_type);
     constexpr Node(value_type, parent_type);
-    constexpr Node(const Node&);
-    constexpr Node& operator=(const Node&);
-    constexpr Node(Node&&);
-    constexpr Node& operator=(Node&&);
-    constexpr const value_type& value() const;
-    constexpr value_type& value();
+    constexpr Node(const Node&) = default;
+    constexpr Node& operator=(const Node&) = default;
+    constexpr Node(Node&&) = default;
+    constexpr Node& operator=(Node&&) = default;
     constexpr const Color& color() const;
     constexpr Color& color();
     constexpr const parent_type& parent() const;
     constexpr parent_type& parent();
-    constexpr const childs_type& childs() const;
-    constexpr childs_type& childs();
-    constexpr const Node*& left() const;
-    constexpr Node*& left();
-    constexpr const Node*& right() const;
-    constexpr Node*& right();
-    constexpr virtual ~Node();
+    constexpr virtual ~Node() = default;
   protected:
     Color color_ = Color::RED;
     parent_type parent_ = nullptr;
-    childs_type childs_{nullptr};
-    value_type value_{};
   private:
   };
+  using node_type = Node<value_type>;
   constexpr RBTree() = default;
   constexpr RBTree(const RBTree&);
   constexpr RBTree& operator=(const RBTree&);
   constexpr RBTree(RBTree&&);
   constexpr RBTree& operator=(RBTree&&);
-  constexpr Node* const & root() const;
-  constexpr Node*& root();
-  constexpr Node* insert(const value_type&);
-  constexpr Node* insert(value_type&&);
-  constexpr Node* remove(const value_type&);
-  constexpr Node* remove(value_type&&);
-  constexpr Node* find(const value_type&) const;
-  constexpr Node* find(value_type&&) const;
+  constexpr Node<Data>* const & root() const;
+  constexpr Node<Data>*& root();
+  constexpr Node<Data>* insert(const value_type&);
+  constexpr Node<Data>* insert(value_type&&);
+  constexpr Node<Data>* remove(const value_type&);
+  constexpr Node<Data>* remove(value_type&&);
+  constexpr Node<Data>* find(const value_type&) const;
+  constexpr Node<Data>* find(value_type&&) const;
   constexpr virtual ~RBTree();
 protected:
-  constexpr static Node* successor(Node*);
-  constexpr static Node* predecessor(Node*);
-  constexpr Node* insert(Node*, Node*&, Node*);
-  constexpr Node* insert(const value_type&, Node*&);
-  constexpr Node* remove(const value_type&, Node*&);
-  constexpr Node* remove(Node*& n);
-  constexpr Node* find(const value_type&, Node* const &) const;
-  constexpr Node* rotate(Node*&, const Direction&);
-  constexpr Node* fix(Node*&);
-  Node* root_ = nullptr;
+  constexpr static Node<Data>* successor(Node<Data>*);
+  constexpr static Node<Data>* predecessor(Node<Data>*);
+  constexpr Node<Data>* insert(Node<Data>*, Node<Data>*&, Node<Data>*);
+  constexpr Node<Data>* insert(const value_type&, Node<Data>*&);
+  constexpr Node<Data>* remove(const value_type&, Node<Data>*&);
+  constexpr Node<Data>* remove(Node<Data>*& n);
+  constexpr Node<Data>* find(const value_type&, Node<Data>* const &) const;
+  constexpr Node<Data>* rotate(Node<Data>*&, const Direction&);
+  constexpr Node<Data>* fix(Node<Data>*&);
+  Node<Data>* root_ = nullptr;
 private:
 };
 
@@ -113,141 +103,37 @@ RBTree<Data>::Direction::Value() const {
 }
 
 template <typename Data>
-constexpr RBTree<Data>::Node::Node(
+template <NodeValue T>
+constexpr RBTree<Data>::Node<T>::Node(
     RBTree<Data>::value_type value,
-    RBTree<Data>::Node::parent_type parent
-) : parent_(parent), value_(value) {}
+    RBTree<Data>::Node<T>::parent_type parent
+) : NodeTreeBinaryBase<Node, T>(value), parent_(parent) {}
 
 template <typename Data>
-constexpr RBTree<Data>::Node::Node(
+template <NodeValue T>
+constexpr RBTree<Data>::Node<T>::Node(
     RBTree<Data>::value_type value
-) : value_(value) {}
+) : NodeTreeBinaryBase<Node, T>(value) {}
 
 template <typename Data>
-constexpr RBTree<Data>::Node::Node(const Node& other)
-  : color_(other.color()),
-    parent_(other.parent()),
-    childs_(nullptr),
-    value_(other.value()) {
-  for (auto i = 0u; i < other.CHILDS_NUM; i++) {
-    if (other.childs()[i]) {
-      this->childs()[i] = new Node(*other.childs()[i]);
-    }
-  }
-}
+template <NodeValue T>
+constexpr const typename RBTree<Data>::template Node<T>::Color&
+RBTree<Data>::Node<T>::color() const { return this->color_; }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node&
-RBTree<Data>::Node::operator=(const Node& other) {
-  if (this != &other) {
-    this->color() = other.color();
-    this->parent() = other.parent();
-    for (auto i = 0u; i < other.CHILDS_NUM; i++) {
-      if (other.childs()[i]) {
-        this->childs()[i] = new Node(*other.childs()[i]);
-      }
-    }
-    this->value() = other.value();
-  }
-  return *this;
-}
+template <NodeValue T>
+constexpr typename RBTree<Data>::template Node<T>::Color&
+RBTree<Data>::Node<T>::color() { return this->color_; }
 
 template <typename Data>
-constexpr RBTree<Data>::Node::Node(Node&& other)
-  : color_(std::move(other.color())),
-    parent_(std::move(other.parent())),
-    value_(std::move(other.value())) {
-  for (auto i = 0u; i < this->CHILDS_NUM; i++) {
-    this->childs()[i] = other.childs()[i];
-    other.childs()[i] = nullptr;
-  }
-}
+template <NodeValue T>
+constexpr const typename RBTree<Data>::template Node<T>::parent_type&
+RBTree<Data>::Node<T>::parent() const { return this->parent_; }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node&
-RBTree<Data>::Node::operator=(Node&& other) {
-  this->color() = std::move(other.color());
-  this->parent() = std::move(other.parent());
-  for (auto i = 0u; i < this->CHILDS_NUM; i++) {
-    this->childs()[i] = other.childs()[i];
-    other.childs()[i] = nullptr;
-  }
-  this->value() = std::move(other.value());
-  return *this;
-}
-
-template <typename Data>
-constexpr const typename RBTree<Data>::value_type&
-RBTree<Data>::Node::value() const {
-  return this->value_;
-}
-
-template <typename Data>
-constexpr typename RBTree<Data>::value_type&
-RBTree<Data>::Node::value() {
-  return this->value_;
-}
-
-template <typename Data>
-constexpr const typename RBTree<Data>::Node::Color&
-RBTree<Data>::Node::color() const { return this->color_; }
-
-template <typename Data>
-constexpr typename RBTree<Data>::Node::Color&
-RBTree<Data>::Node::color() { return this->color_; }
-
-template <typename Data>
-constexpr const typename RBTree<Data>::Node::parent_type&
-RBTree<Data>::Node::parent() const { return this->parent_; }
-
-template <typename Data>
-constexpr typename RBTree<Data>::Node::parent_type&
-RBTree<Data>::Node::parent() { return this->parent_; }
-
-template <typename Data>
-constexpr const typename RBTree<Data>::Node::childs_type&
-RBTree<Data>::Node::childs() const {
-  return this->childs_;
-}
-
-template <typename Data>
-constexpr typename RBTree<Data>::Node::childs_type&
-RBTree<Data>::Node::childs() {
-  return this->childs_;
-}
-
-template <typename Data>
-constexpr const typename RBTree<Data>::Node*&
-RBTree<Data>::Node::left() const {
-  return this->childs_[0];
-}
-
-template <typename Data>
-constexpr typename RBTree<Data>::Node*&
-RBTree<Data>::Node::left() {
-  return this->childs_[0];
-}
-
-template <typename Data>
-constexpr const typename RBTree<Data>::Node*&
-RBTree<Data>::Node::right() const {
-  return this->childs_[1];
-}
-
-template <typename Data>
-constexpr typename RBTree<Data>::Node*&
-RBTree<Data>::Node::right() {
-  return this->childs_[1];
-}
-
-template <typename Data>
-constexpr RBTree<Data>::Node::~Node() {
-  for (auto* child : this->childs()) {
-    if (child) {
-      delete child;
-    }
-  }
-}
+template <NodeValue T>
+constexpr typename RBTree<Data>::template Node<T>::parent_type&
+RBTree<Data>::Node<T>::parent() { return this->parent_; }
 
 template <typename Data>
 constexpr RBTree<Data>::RBTree(const RBTree& other) {
@@ -286,8 +172,8 @@ constexpr RBTree<Data>& RBTree<Data>::operator=(RBTree&& other) {
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
-RBTree<Data>::successor(Node* node) {
+constexpr typename RBTree<Data>::node_type*
+RBTree<Data>::successor(node_type* node) {
   auto* ret = node->right();
   while (ret->left()) {
     ret = ret->left();
@@ -296,8 +182,8 @@ RBTree<Data>::successor(Node* node) {
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
-RBTree<Data>::predecessor(Node* node) {
+constexpr typename RBTree<Data>::node_type*
+RBTree<Data>::predecessor(node_type* node) {
   auto* ret = node->left();
   while (ret->right()) {
     ret = ret->right();
@@ -306,23 +192,23 @@ RBTree<Data>::predecessor(Node* node) {
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node* const &
+constexpr typename RBTree<Data>::node_type* const &
 RBTree<Data>::root() const {
   return this->root_;
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*&
+constexpr typename RBTree<Data>::node_type*&
 RBTree<Data>::root() {
   return this->root_;
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::insert(
-    RBTree<Data>::Node* insertable,
-    RBTree<Data>::Node*& node,
-    RBTree<Data>::Node* parent
+    RBTree<Data>::node_type* insertable,
+    RBTree<Data>::node_type*& node,
+    RBTree<Data>::node_type* parent
 ) {
   if (!node) {
     node = insertable;
@@ -336,23 +222,23 @@ RBTree<Data>::insert(
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::insert(
     const typename RBTree<Data>::value_type& val,
-    RBTree<Data>::Node*& node
+    RBTree<Data>::node_type*& node
 ) {
-  auto* insertable = new Node(val);
+  auto* insertable = new node_type(val);
   this->insert(insertable, node, node ? node->parent() : nullptr);
   this->fix(insertable);
-  this->root()->color() = Node::Color::BLACK;
+  this->root()->color() = node_type::Color::BLACK;
   return node;
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::remove(
     const typename RBTree<Data>::value_type& val,
-    RBTree<Data>::Node*& node
+    RBTree<Data>::node_type*& node
 ) {
   if (!node) {
     return node;
@@ -366,10 +252,10 @@ RBTree<Data>::remove(
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::find(
     const typename RBTree<Data>::value_type& val,
-    RBTree<Data>::Node* const & node
+    RBTree<Data>::node_type* const & node
 ) const {
   if (!node) {
     return node;
@@ -382,48 +268,48 @@ RBTree<Data>::find(
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::insert(const typename RBTree<Data>::value_type& val) {
   return this->insert(val, this->root());
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::insert(typename RBTree<Data>::value_type&& val) {
   return this->insert(val, this->root());
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::remove(const typename RBTree<Data>::value_type& val) {
   return this->remove(val, this->root());
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::remove(typename RBTree<Data>::value_type&& val) {
   return this->remove(val, this->root());
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::find(const typename RBTree<Data>::value_type& val) const {
   return this->find(val, this->root());
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
+constexpr typename RBTree<Data>::node_type*
 RBTree<Data>::find(typename RBTree<Data>::value_type&& val) const {
   return this->find(val, this->root());
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
-RBTree<Data>::rotate(typename RBTree<Data>::Node*& n, const Direction& dir) {
-  typename RBTree<Data>::Node* g = n->parent();
-  typename RBTree<Data>::Node* s =
+constexpr typename RBTree<Data>::node_type*
+RBTree<Data>::rotate(typename RBTree<Data>::node_type*& n, const Direction& dir) {
+  typename RBTree<Data>::node_type* g = n->parent();
+  typename RBTree<Data>::node_type* s =
       n->childs()[dir.inv()];
-  typename RBTree<Data>::Node* c;
+  typename RBTree<Data>::node_type* c;
   c = s->childs()[dir];
   n->childs()[dir.inv()] = c;
   if (c) {
@@ -441,77 +327,77 @@ RBTree<Data>::rotate(typename RBTree<Data>::Node*& n, const Direction& dir) {
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
-RBTree<Data>::fix(typename RBTree<Data>::Node*& n) {
-  RBTree<Data>::Node* p = n->parent(); /// parent
+constexpr typename RBTree<Data>::node_type*
+RBTree<Data>::fix(typename RBTree<Data>::node_type*& n) {
+  RBTree<Data>::node_type* p = n->parent(); /// parent
   if (!p) {
     this->root() = n;
     return n;
   }
-  typename RBTree<Data>::Node* g; /// grandparent
-  typename RBTree<Data>::Node* u; /// uncle
-  typename RBTree<Data>::Node* copy = n;
+  typename RBTree<Data>::node_type* g; /// grandparent
+  typename RBTree<Data>::node_type* u; /// uncle
+  typename RBTree<Data>::node_type* copy = n;
   do {
-    if (p->color() == Node::Color::BLACK) {
+    if (p->color() == node_type::Color::BLACK) {
       return n;
     } else if (!(g = p->parent())) {
-      p->color() = Node::Color::BLACK;
+      p->color() = node_type::Color::BLACK;
       return n;
     }
     const Direction dir = (p == g->left()) ? Direction::LEFT : Direction::RIGHT;
     u = g->childs()[dir.inv()];
-    if (!u || u->color() == Node::Color::BLACK) {
+    if (!u || u->color() == node_type::Color::BLACK) {
       if (copy == (dir == Direction::LEFT ? p->right() : p->left())) {
         this->rotate(p, dir);
         copy = p;
         p = g->childs()[dir];
       }
       this->rotate(g, dir.inv());
-      p->color() = Node::Color::BLACK;
-      g->color() = Node::Color::RED;
+      p->color() = node_type::Color::BLACK;
+      g->color() = node_type::Color::RED;
       return n;
     }
-    p->color() = Node::Color::BLACK;
-    u->color() = Node::Color::BLACK;
-    g->color() = Node::Color::RED;
+    p->color() = node_type::Color::BLACK;
+    u->color() = node_type::Color::BLACK;
+    g->color() = node_type::Color::RED;
     copy = g;
   } while ((p = copy->parent()));
   return n;
 }
 
 template <typename Data>
-constexpr typename RBTree<Data>::Node*
-RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
+constexpr typename RBTree<Data>::node_type*
+RBTree<Data>::remove(typename RBTree<Data>::node_type*& n) {
   /// ?? static constexpr
-  const std::function<void(typename RBTree<Data>::Node*&)> case1 =
-      [this, &case1](typename RBTree<Data>::Node*& n) {
+  const std::function<void(typename RBTree<Data>::node_type*&)> case1 =
+      [this, &case1](typename RBTree<Data>::node_type*& n) {
     const auto case2 =
-        [this, &case1](typename RBTree<Data>::Node*& n) {
+        [this, &case1](typename RBTree<Data>::node_type*& n) {
       const Direction dir = (n == n->parent()->left()) ?
           Direction::LEFT :
           Direction::RIGHT;
-      RBTree<Data>::Node* s = n->parent()->childs()[dir.inv()];
+      RBTree<Data>::node_type* s = n->parent()->childs()[dir.inv()];
       const auto case3 =
-          [this, &s, &case1, &dir](typename RBTree<Data>::Node*& n) {
+          [this, &s, &case1, &dir](typename RBTree<Data>::node_type*& n) {
         const auto case4 =
-            [this, &s, &dir](typename RBTree<Data>::Node*& n) {
+            [this, &s, &dir](typename RBTree<Data>::node_type*& n) {
           const auto case5 =
-              [this, &s, &dir](typename RBTree<Data>::Node*& n) {
+              [this, &s, &dir](typename RBTree<Data>::node_type*& n) {
             const auto case6 =
-                [this, &s, &dir](typename RBTree<Data>::Node*& n) {
+                [this, &s, &dir](typename RBTree<Data>::node_type*& n) {
               s->color() = n->parent()->color();
-              n->parent()->color() = Node::Color::BLACK;
-              s->childs()[dir.inv()]->color() = Node::Color::BLACK;
+              n->parent()->color() = node_type::Color::BLACK;
+              s->childs()[dir.inv()]->color() = node_type::Color::BLACK;
               this->rotate(n->parent(), dir);
             };
-            if (s->color() == Node::Color::BLACK) {
+            if (s->color() == node_type::Color::BLACK) {
               if (
                   s->childs()[dir] &&
-                  s->childs()[dir]->color() == Node::Color::RED &&
-                  s->childs()[dir.inv()]->color() == Node::Color::BLACK
+                  s->childs()[dir]->color() == node_type::Color::RED &&
+                  s->childs()[dir.inv()]->color() == node_type::Color::BLACK
               ) {
-                s->color() = Node::Color::RED;
-                s->childs()[dir]->color() = Node::Color::BLACK;
+                s->color() = node_type::Color::RED;
+                s->childs()[dir]->color() = node_type::Color::BLACK;
                 this->rotate(s, dir.inv());
                 s = n->parent()->childs()[dir.inv()];
               }
@@ -519,32 +405,32 @@ RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
             case6(n);
           };
           if (
-              n->parent()->color() == Node::Color::RED &&
-              s->color() == Node::Color::BLACK &&
-              (!s->left() || s->left()->color() == Node::Color::BLACK) &&
-              (!s->right() || s->right()->color() == Node::Color::BLACK)
+              n->parent()->color() == node_type::Color::RED &&
+              s->color() == node_type::Color::BLACK &&
+              (!s->left() || s->left()->color() == node_type::Color::BLACK) &&
+              (!s->right() || s->right()->color() == node_type::Color::BLACK)
           ) {
-            s->color() = Node::Color::RED;
-            n->parent()->color() = Node::Color::BLACK;
+            s->color() = node_type::Color::RED;
+            n->parent()->color() = node_type::Color::BLACK;
           } else {
             case5(n);
           }
         };
         if (
-            n->parent()->color() == Node::Color::BLACK &&
-            s->color() == Node::Color::BLACK &&
-            (!s->left() || s->left()->color() == Node::Color::BLACK) &&
-            (!s->right() || s->right()->color() == Node::Color::BLACK)
+            n->parent()->color() == node_type::Color::BLACK &&
+            s->color() == node_type::Color::BLACK &&
+            (!s->left() || s->left()->color() == node_type::Color::BLACK) &&
+            (!s->right() || s->right()->color() == node_type::Color::BLACK)
         ) {
-          s->color() = Node::Color::RED;
+          s->color() = node_type::Color::RED;
           case1(n->parent());
         } else {
           case4(n);
         }
       };
-      if (s->color() == Node::Color::RED) {
-        n->parent()->color() = Node::Color::RED;
-        s->color() = Node::Color::BLACK;
+      if (s->color() == node_type::Color::RED) {
+        n->parent()->color() = node_type::Color::RED;
+        s->color() = node_type::Color::BLACK;
         this->rotate(n->parent(), dir);
         s = n->parent()->childs()[dir.inv()];
       }
@@ -554,9 +440,12 @@ RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
       case2(n);
     }
   };
-  const auto withOneChild = [&case1](typename RBTree<Data>::Node*& n, Direction dir) {
+  const auto withOneChild = [&case1](
+      typename RBTree<Data>::node_type*& n,
+      Direction dir
+  ) {
     const auto exchange = [&dir](
-      typename RBTree<Data>::Node*& n
+      typename RBTree<Data>::node_type*& n
     ) {
       auto* copy = n;
       n = n->childs()[dir];
@@ -564,9 +453,9 @@ RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
       return copy;
     };
     auto old = exchange(n);
-    if (old->color() == Node::Color::BLACK) {
-      if (old->childs()[dir]->color() == Node::Color::RED) {
-        old->childs()[dir]->color() = Node::Color::BLACK;
+    if (old->color() == node_type::Color::BLACK) {
+      if (old->childs()[dir]->color() == node_type::Color::RED) {
+        old->childs()[dir]->color() = node_type::Color::BLACK;
       } else {
         case1(old->childs()[dir]);
       }
@@ -575,7 +464,7 @@ RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
     delete(old);
   };
   if (!n->left() && !n->right()) {
-    if (n->color() == Node::Color::BLACK) {
+    if (n->color() == node_type::Color::BLACK) {
       case1(n);
     }
     delete n;
@@ -591,7 +480,7 @@ RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
       n->value() = successor->value();
       successor->parent()->right() = successor->right();
       successor->right() = nullptr;
-      if (successor->color() == Node::Color::BLACK) {
+      if (successor->color() == node_type::Color::BLACK) {
         case1(successor);
       }
       delete successor;
@@ -600,7 +489,7 @@ RBTree<Data>::remove(typename RBTree<Data>::Node*& n) {
       n->value() = successor->value();
       successor->parent()->left() = successor->right();
       successor->right() = nullptr;
-      if (successor->color() == Node::Color::BLACK) {
+      if (successor->color() == node_type::Color::BLACK) {
         case1(successor);
       }
       delete successor;

@@ -5,65 +5,55 @@
 #include <cstddef>
 #include <utility>
 
+#include <sal/node_tree_binary_base.hh>
+
 namespace sal {
 
 template <typename Data>
 class AATree {
 public:
   using value_type = Data;
-  class Node {
+  template <NodeValue T>
+  class Node : public NodeTreeBinaryBase<Node, T> {
   public:
-    static constexpr std::size_t CHILDS_NUM = 2;
-    template <typename T>
-    using container_type = T[CHILDS_NUM];
-    using childs_type = container_type<Node*>;
     constexpr Node() = default;
-    constexpr Node(value_type);
-    constexpr Node(const Node&);
-    constexpr Node& operator=(const Node&);
-    constexpr Node(Node&&);
-    constexpr Node& operator=(Node&&);
-    constexpr const value_type& value() const;
-    constexpr value_type& value();
+    constexpr Node(T);
+    constexpr Node(const Node&) = default;
+    constexpr Node& operator=(const Node&) = default;
+    constexpr Node(Node&&) = default;
+    constexpr Node& operator=(Node&&) = default;
     constexpr const std::size_t& level() const;
     constexpr std::size_t& level();
-    constexpr const childs_type& childs() const;
-    constexpr childs_type& childs();
-    constexpr const Node*& left() const;
-    constexpr Node*& left();
-    constexpr const Node*& right() const;
-    constexpr Node*& right();
-    constexpr virtual ~Node();
+    constexpr virtual ~Node() = default;
   protected:
     std::size_t level_ = 0;
-    childs_type childs_{nullptr};
-    value_type value_{};
   private:
   };
+  using node_type = Node<value_type>;
   constexpr AATree() = default;
   constexpr AATree(const AATree&);
   constexpr AATree& operator=(const AATree&);
   constexpr AATree(AATree&&);
   constexpr AATree& operator=(AATree&&);
-  constexpr Node* const & root() const;
-  constexpr Node*& root();
-  constexpr Node* insert(const value_type&);
-  constexpr Node* insert(value_type&&);
-  constexpr Node* remove(const value_type&);
-  constexpr Node* remove(value_type&&);
-  constexpr Node* find(const value_type&) const;
-  constexpr Node* find(value_type&&) const;
+  constexpr node_type* const & root() const;
+  constexpr node_type*& root();
+  constexpr node_type* insert(const value_type&);
+  constexpr node_type* insert(value_type&&);
+  constexpr node_type* remove(const value_type&);
+  constexpr node_type* remove(value_type&&);
+  constexpr node_type* find(const value_type&) const;
+  constexpr node_type* find(value_type&&) const;
   constexpr virtual ~AATree();
 protected:
-  constexpr static Node* successor(Node*);
-  constexpr static Node* predecessor(Node*);
-  constexpr static Node* decrease(Node*);
-  constexpr Node*& skew(Node*&);
-  constexpr Node*& split(Node*&);
-  constexpr Node* insert(const value_type&, Node*&);
-  constexpr Node* remove(const value_type&, Node*&);
-  constexpr Node* find(const value_type&, Node* const &) const;
-  Node* root_ = nullptr;
+  constexpr static node_type* successor(node_type*);
+  constexpr static node_type* predecessor(node_type*);
+  constexpr static node_type* decrease(node_type*);
+  constexpr node_type*& skew(node_type*&);
+  constexpr node_type*& split(node_type*&);
+  constexpr node_type* insert(const value_type&, node_type*&);
+  constexpr node_type* remove(const value_type&, node_type*&);
+  constexpr node_type* find(const value_type&, node_type* const &) const;
+  node_type* root_ = nullptr;
 private:
 };
 
@@ -72,122 +62,19 @@ private:
 namespace sal {
 
 template <typename Data>
-constexpr AATree<Data>::Node::Node(AATree<Data>::value_type value)
-  : value_(value) {}
+template <NodeValue T>
+constexpr AATree<Data>::Node<T>::Node(T value)
+  : NodeTreeBinaryBase<Node, T>(value) {}
 
 template <typename Data>
-constexpr AATree<Data>::Node::Node(const Node& other)
-  : level_(other.level()),
-    childs_(nullptr),
-    value_(other.value()) {
-  for (auto i = 0u; i < other.CHILDS_NUM; i++) {
-    if (other.childs()[i]) {
-      this->childs()[i] = new Node(*other.childs()[i]);
-    }
-  }
-}
-
-template <typename Data>
-constexpr typename AATree<Data>::Node&
-AATree<Data>::Node::operator=(const Node& other) {
-  if (this != &other) {
-    this->level() = other.level();
-    for (auto i = 0u; i < other.CHILDS_NUM; i++) {
-      if (other.childs()[i]) {
-        this->childs()[i] = new Node(*other.childs()[i]);
-      }
-    }
-    this->value() = other.value();
-  }
-  return *this;
-}
-
-template <typename Data>
-constexpr AATree<Data>::Node::Node(Node&& other)
-  : level_(std::move(other.level())),
-    value_(std::move(other.value())) {
-  for (auto i = 0u; i < this->CHILDS_NUM; i++) {
-    this->childs()[i] = other.childs()[i];
-    other.childs()[i] = nullptr;
-  }
-}
-
-template <typename Data>
-constexpr typename AATree<Data>::Node&
-AATree<Data>::Node::operator=(Node&& other) {
-  this->level() = std::move(other.level());
-  for (auto i = 0u; i < this->CHILDS_NUM; i++) {
-    this->childs()[i] = other.childs()[i];
-    other.childs()[i] = nullptr;
-  }
-  this->value() = std::move(other.value());
-  return *this;
-}
-
-template <typename Data>
-constexpr const typename AATree<Data>::value_type&
-AATree<Data>::Node::value() const {
-  return this->value_;
-}
-
-template <typename Data>
-constexpr typename AATree<Data>::value_type&
-AATree<Data>::Node::value() {
-  return this->value_;
-}
-
-template <typename Data>
-constexpr const std::size_t& AATree<Data>::Node::level() const {
+template <NodeValue T>
+constexpr const std::size_t& AATree<Data>::Node<T>::level() const {
   return this->level_;
 }
 
 template <typename Data>
-constexpr std::size_t& AATree<Data>::Node::level() { return this->level_; }
-
-template <typename Data>
-constexpr const typename AATree<Data>::Node::childs_type&
-AATree<Data>::Node::childs() const {
-  return this->childs_;
-}
-
-template <typename Data>
-constexpr typename AATree<Data>::Node::childs_type&
-AATree<Data>::Node::childs() {
-  return this->childs_;
-}
-
-template <typename Data>
-constexpr const typename AATree<Data>::Node*&
-AATree<Data>::Node::left() const {
-  return this->childs_[0];
-}
-
-template <typename Data>
-constexpr typename AATree<Data>::Node*&
-AATree<Data>::Node::left() {
-  return this->childs_[0];
-}
-
-template <typename Data>
-constexpr const typename AATree<Data>::Node*&
-AATree<Data>::Node::right() const {
-  return this->childs_[1];
-}
-
-template <typename Data>
-constexpr typename AATree<Data>::Node*&
-AATree<Data>::Node::right() {
-  return this->childs_[1];
-}
-
-template <typename Data>
-constexpr AATree<Data>::Node::~Node() {
-  for (auto* child : this->childs()) {
-    if (child) {
-      delete child;
-    }
-  }
-}
+template <NodeValue T>
+constexpr std::size_t& AATree<Data>::Node<T>::level() { return this->level_; }
 
 template <typename Data>
 constexpr AATree<Data>::AATree(const AATree& other) {
@@ -226,8 +113,8 @@ constexpr AATree<Data>& AATree<Data>::operator=(AATree&& other) {
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*&
-AATree<Data>::skew(AATree<Data>::Node*& node) {
+constexpr typename AATree<Data>::node_type*&
+AATree<Data>::skew(AATree<Data>::node_type*& node) {
   if (!node) {
     return node;
   } else if (!node->left()) {
@@ -242,8 +129,8 @@ AATree<Data>::skew(AATree<Data>::Node*& node) {
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*&
-AATree<Data>::split(AATree<Data>::Node*& node) {
+constexpr typename AATree<Data>::node_type*&
+AATree<Data>::split(AATree<Data>::node_type*& node) {
   if (!node) {
     return node;
   } else if (!node->right() || !node->right()->right()) {
@@ -259,8 +146,8 @@ AATree<Data>::split(AATree<Data>::Node*& node) {
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
-AATree<Data>::successor(Node* node) {
+constexpr typename AATree<Data>::node_type*
+AATree<Data>::successor(node_type* node) {
   auto* ret = node->right();
   while (ret->left()) {
     ret = ret->left();
@@ -269,8 +156,8 @@ AATree<Data>::successor(Node* node) {
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
-AATree<Data>::predecessor(Node* node) {
+constexpr typename AATree<Data>::node_type*
+AATree<Data>::predecessor(node_type* node) {
   auto* ret = node->left();
   while (ret->right()) {
     ret = ret->right();
@@ -279,8 +166,8 @@ AATree<Data>::predecessor(Node* node) {
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
-AATree<Data>::decrease(Node* node) {
+constexpr typename AATree<Data>::node_type*
+AATree<Data>::decrease(node_type* node) {
   if (node->left() && node->right()) {
     const auto should =
         std::min(node->left()->level(), node->right()->level()) + 1;
@@ -295,22 +182,22 @@ AATree<Data>::decrease(Node* node) {
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node* const &
+constexpr typename AATree<Data>::node_type* const &
 AATree<Data>::root() const {
   return this->root_;
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*&
+constexpr typename AATree<Data>::node_type*&
 AATree<Data>::root() {
   return this->root_;
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::insert(
     const typename AATree<Data>::value_type& val,
-    AATree<Data>::Node*& node
+    AATree<Data>::node_type*& node
 ) {
   if (!node) {
     node = new Node(val);
@@ -323,10 +210,10 @@ AATree<Data>::insert(
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::remove(
     const typename AATree<Data>::value_type& val,
-    AATree<Data>::Node*& node
+    AATree<Data>::node_type*& node
 ) {
   if (!node) {
     return node;
@@ -367,10 +254,10 @@ AATree<Data>::remove(
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::find(
     const typename AATree<Data>::value_type& val,
-    AATree<Data>::Node* const & node
+    AATree<Data>::node_type* const & node
 ) const {
   if (!node) {
     return node;
@@ -383,37 +270,37 @@ AATree<Data>::find(
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::insert(const typename AATree<Data>::value_type& val) {
   return this->insert(val, this->root());
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::insert(typename AATree<Data>::value_type&& val) {
   return this->insert(val, this->root());
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::remove(const typename AATree<Data>::value_type& val) {
   return this->remove(val, this->root());
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::remove(typename AATree<Data>::value_type&& val) {
   return this->remove(val, this->root());
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::find(const typename AATree<Data>::value_type& val) const {
   return this->find(val, this->root());
 }
 
 template <typename Data>
-constexpr typename AATree<Data>::Node*
+constexpr typename AATree<Data>::node_type*
 AATree<Data>::find(typename AATree<Data>::value_type&& val) const {
   return this->find(val, this->root());
 }

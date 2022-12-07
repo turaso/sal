@@ -136,7 +136,7 @@ constexpr std::vector<typename Tree<Data, Algorithm>::tree_type::value_type>
 Tree<Data, Algorithm>::bfs() const {
   std::vector<typename Tree<Data, Algorithm>::tree_type::value_type> ret;
   /// ?? to be improved
-  std::stack<const typename Tree<Data, Algorithm>::tree_type::Node*> stack;
+  std::stack<const typename Tree<Data, Algorithm>::tree_type::node_type*> stack;
   stack.push(this->algo_.root());
   while (!stack.empty()) {
     const auto* top = stack.top();
